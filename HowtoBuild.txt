@@ -1,0 +1,23 @@
+1. go to library
+2. mvn clean package
+3. # To launch Library A instance
+
+$ java -jar target/library-0.0.1-SNAPSHOT.jar server config/library_a_config.yml 
+
+
+
+# To launch Library B instance
+
+$ java -jar target/library-0.0.1-SNAPSHOT.jar server config/library_b_config.yml 
+
+4. go to lib/dropwizard-jobs
+5. mvn install
+
+6. go to procurement-service
+7. java -jar target/procurement-service-0.0.1-SNAPSHOT.jar server config/procurement-service_config.yml
+
+ http://localhost:8001/library/v1/books/1?status=lost
+
+1. Category all lowercase
+2. listner publisher
+3.
