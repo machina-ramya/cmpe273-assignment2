@@ -41,10 +41,10 @@ import org.codehaus.jackson.map.ObjectMapper;
 
 
 /**
- * This job will run at every 5 second.
+ * This job will run at every 300 second.
  */
 
-@Every("60s")
+@Every("300s")
 public class ProcurementSchedulerJob extends Job {
     private final Logger log = LoggerFactory.getLogger(getClass());
     ArrayList<String> bookList = new ArrayList<String>();

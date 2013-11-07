@@ -21,6 +21,8 @@ public interface BookRepositoryInterface {
      */
     Book saveBook(Book newBook);
 
+    Book addBook(Book newBook) ;
+
     /**
      * Retrieve an existing book by ISBN
      * 
@@ -44,4 +46,6 @@ public interface BookRepositoryInterface {
      *            an ISBN of the book to be deleted
      */
     void delete(Long isbn);
+
+    void updateStatus(Long aIsbn, Book.Status aStatus);
 }

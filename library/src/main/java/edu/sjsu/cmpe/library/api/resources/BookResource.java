@@ -106,7 +106,8 @@ public class BookResource {
 
     if( status.toString() == "lost" ) {
         // Send a new order msg to the queue.
-        try { 
+        try {
+            bookRepository.updateStatus(isbn.get(), status);
             sendMessageToQueue(configs.getStompQueueName(), 
                                configs.getLibraryInstanceName()+":"+isbn.get());
         } catch(JMSException e) {

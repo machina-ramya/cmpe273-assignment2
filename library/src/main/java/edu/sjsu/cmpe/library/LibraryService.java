@@ -15,6 +15,7 @@ import edu.sjsu.cmpe.library.config.LibraryServiceConfiguration;
 import edu.sjsu.cmpe.library.repository.BookRepository;
 import edu.sjsu.cmpe.library.repository.BookRepositoryInterface;
 import edu.sjsu.cmpe.library.ui.resources.HomeResource;
+import edu.sjsu.cmpe.library.domain.Book;
 
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -28,6 +29,9 @@ import javax.jms.Message;
 import javax.jms.Session;
 import javax.jms.TextMessage;
 
+import java.net.URL;
+import java.net.MalformedURLException;
+
 import org.fusesource.stomp.jms.StompJmsConnectionFactory;
 import org.fusesource.stomp.jms.StompJmsDestination;
 
@@ -35,7 +39,8 @@ public class LibraryService extends Service<LibraryServiceConfiguration> {
 
     private final Logger log = LoggerFactory.getLogger(getClass());
     private ExecutorService executor;
-    public static String topicName = "";
+    public  static String topicName = "";
+    private static BookRepositoryInterface bookRepository;
 
     public static void main(String[] args) throws Exception {
     	new LibraryService().run(args);
@@ -46,6 +51,52 @@ public class LibraryService extends Service<LibraryServiceConfiguration> {
 		bootstrap.setName("library-service");
 		bootstrap.addBundle(new ViewBundle());
 		bootstrap.addBundle(new AssetsBundle());
+    }
+
+    public static Book convertMessage(String aMessage) {
+    	if(aMessage == null || aMessage.length() <= 0) {
+    		return null;
+    	}
+
+    	String[] info = aMessage.split(":");
+    	if(info == null || info.length <= 0) {
+    		return null;
+    	}
+
+    	Book b = new Book();
+    	b.setIsbn(Integer.parseInt(info[0]));
+    	b.setTitle(info[1].split("\"")[1]);
+    	b.setCategory(info[2].split("\"")[1]);
+    	
+    	try {
+    		String http = info[3].split("\"")[1];
+    		String urlBody = info[4].split("\"")[0];
+    		String url = http + ":" + urlBody;
+    		b.setCoverimage(new URL(url));
+    	} catch (MalformedURLException e) {
+    		System.out.println("MalformedURLException");
+    	}
+
+    	return b;
+    }
+
+    public static void updateRepository(Book aBook) {
+    	if(aBook == null) {
+    		return;
+    	}
+
+    	// If the book is already present, then update it.
+    	Book b = bookRepository.getBookByISBN(aBook.getIsbn());
+    	if(b != null) {
+    		b.setStatus(aBook.getStatus());
+    		b.setCategory(aBook.getCategory());
+    		b.setTitle(aBook.getTitle());
+    		b.setCoverimage(aBook.getCoverimage());
+    	}
+    	// If absent, then add the book to the repo.
+    	else {
+    		bookRepository.addBook(aBook);
+    	}
     }
 
     @Override
@@ -65,7 +116,7 @@ public class LibraryService extends Service<LibraryServiceConfiguration> {
 		/** Root API */
 		environment.addResource(RootResource.class);
 		/** Books APIs */
-		BookRepositoryInterface bookRepository = new BookRepository();
+		bookRepository = new BookRepository();
 		environment.addResource(new BookResource(bookRepository, configuration));
 
 		/** UI Resources */
@@ -81,7 +132,7 @@ public class LibraryService extends Service<LibraryServiceConfiguration> {
 			    final String HOST 		= "54.215.210.214";//"localhost";
 			    final String TOPIC_NAME = LibraryService.topicName;
 			    System.out.println(TOPIC_NAME);
-
+			    
     			try{
     				StompJmsConnectionFactory factory = new StompJmsConnectionFactory();
 		    		factory.setBrokerURI("tcp://" + HOST + ":" + PORT_NUM);
@@ -92,14 +143,15 @@ public class LibraryService extends Service<LibraryServiceConfiguration> {
 			        Destination dest = new StompJmsDestination(TOPIC_NAME);
 
 			        MessageConsumer consumer = session.createConsumer(dest);
-			        
 			        String body = "";
-        
-		        	while(true) {
+			        
+			        while(true) {
 			            Message msg = consumer.receive();
 			            if( msg instanceof  TextMessage ) {
 		                    body = ((TextMessage) msg).getText();
 		                    System.out.println("Received message = " + body);
+		                    Book bookReceived = LibraryService.convertMessage(body);
+		                    LibraryService.updateRepository(bookReceived);
 			            } else if (msg == null) {
 		                  	System.out.println("No new messages.");
 		                  	break;
@@ -108,10 +160,6 @@ public class LibraryService extends Service<LibraryServiceConfiguration> {
 			            }
 		        	} // end while loop
 		        
-		        	if(!body.equals("")){
-			        	
-			        }
-
 		        	connection.close();
 		        	System.out.println("Done");
 			    } catch (Exception e) {
